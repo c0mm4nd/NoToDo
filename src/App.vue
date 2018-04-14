@@ -19,11 +19,11 @@
         <el-main>
           <el-card class="box-card">
             <div slot="header">
-              <span style="font-size:18px;">待办</span>
+              <span style="font-size:18px;">待办 ({{ todoList.length }})</span>
               <i style="float: right;" class="el-icon-delete" v-on:click="dialogVisible = true"></i>
             </div>
-            <el-collapse v-model="activeName" accordion>
-              <el-collapse-item v-for="todo in todoList" :key="todo[0]" v-if="!todo[1]">
+            <el-collapse v-model="activeName" accordion >
+              <el-collapse-item v-for="(todo, index) in todoList" :key="todo[0]" v-if="!todo[1]">
                 <template slot="title">
                   {{ todo[2] }}
                 </template>
@@ -31,19 +31,11 @@
                   {{ todo[0] }}
                 </template>
                 <div>{{ todo[3] }}</div>
-                // some buttons
-                <!-- <el-switch
-                    v-model="todo[0]"
-                    active-text="未完成"
-                    inactive-text="已完成"
-                    style="float: right" >
-                  </el-switch> -->
                 <el-row style="font-size: 28px; letter-spacing: 4px;">
                   <i type="primary" class="el-icon-edit" ></i>
-                  <i type="success" class="el-icon-check"  v-on:click="finished" ></i>
                   <i type="info" class="el-icon-message" ></i>
                   <i type="warning" class="el-icon-star-off" ></i>
-                  <i type="danger" class="el-icon-delete"  v-on:click="removeItem('', $event)"></i>
+                  <i type="success" class="el-icon-check"  v-on:click="finished(index,$event)" ></i>
                 </el-row>
               </el-collapse-item>
             </el-collapse>
@@ -92,6 +84,8 @@ export default {
         console.log(error)
         var todoList = []
       }
+      
+      // console.log(todoList)
 
       if (typeof todoList != 'object') {
         var todoList = []
@@ -143,19 +137,41 @@ export default {
       })
 
     },
-    removeItem (event, index) {
-      console.log(event)
-      console.log(index)
-      
+    finished (index, e) {
+      // console.log(e.target)
+      var that = this
+      chrome.storage.sync.get(['todo'], function(result){
+        // console.log(result.todo)
+
+        try {
+          var todoList = JSON.parse(result.todo)  
+        } catch (error) {
+          console.log(error)
+          var todoList = []
+        }
+        
+        
+        todoList.splice(index, 1)
+        var jsonTodoList = JSON.stringify(todoList)
+        
+        chrome.storage.sync.set({'todo': jsonTodoList}, () => {
+          // 通知保存完成。
+          that.$notify({
+            title: '完成成功',
+            type: 'success',
+            message: '恭喜BalaBala',
+            duration: 2000
+          })
+          that.todoList = todoList
+        });
+
+      })
     },
     nova () {
       let that = this
       that.todoList = []
       chrome.storage.sync.set({'todo': ''}, () => {})
       that.dialogVisible = false
-    },
-    finished () {
-
     }
   },
 }
@@ -171,5 +187,16 @@ export default {
 #aside-card {
   min-height: 400px;
   font-size: 18px;
+}
+
+.el-collapse-item__arrow {
+  font-size: 30px;
+  line-height: 56px;
+}
+
+.el-collapse-item__header {
+  font-size: 20px;
+  line-height: 56px;
+  height: 56px;
 }
 </style>
