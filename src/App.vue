@@ -25,7 +25,7 @@
             <el-collapse v-model="activeName" accordion >
               <el-collapse-item v-for="(todo, index) in todoList" :key="todo[0]" v-if="!todo[1]">
                 <template slot="title">
-                  {{ todo[2] }}
+                  <div v-bind:class="{redWord: todo[4]}"> {{ todo[2] }} </div>
                 </template>
                 <template slot="name">
                   {{ todo[0] }}
@@ -34,8 +34,8 @@
                 <el-row style="font-size: 28px; letter-spacing: 4px;">
                   <i type="primary" class="el-icon-edit" ></i>
                   <i type="info" class="el-icon-message" ></i>
-                  <i type="warning" class="el-icon-star-off" ></i>
-                  <i type="success" class="el-icon-check"  v-on:click="finished(index,$event)" ></i>
+                  <i type="warning" class="el-icon-star-off" v-on:click="star(index, $event)" ></i>
+                  <i type="success" class="el-icon-check"  v-on:click="finished(index, $event)" ></i>
                 </el-row>
               </el-collapse-item>
             </el-collapse>
@@ -65,18 +65,12 @@
 export default {
   data() {
     return {
-      inputValue: "",
-      tableData: [
-        { text: '学习 JavaScript' },
-        { text: '学习 Vue' },
-        { text: '整个牛项目' }
-      ],
       todoList: [],
       dialogVisible: false
     }
   },
   mounted(){
-    var that = this
+    let that = this
     chrome.storage.sync.get(['todo'], function (result) {
       try {
         var todoList = JSON.parse(result.todo)  
@@ -88,30 +82,57 @@ export default {
       // console.log(todoList)
 
       if (typeof todoList != 'object') {
-        var todoList = []
+        todoList = []
       }
+
+      let num_index = [0]
+      let bool_index = [1, 4]
+      let text_index = [2, 3]
+
+      // length check
+      todoList.forEach( (todo) => {
+        while (todo.length < 5) { // length : 5 
+          todo.push("")
+          // type check
+          num_index.forEach( (i) => {
+            if (typeof todo[i] != "number") {
+              todo[i] = 0
+            }
+          })
+          bool_index.forEach( (i) => {
+            if (typeof todo[i] != "boolean") {
+              todo[i] = false
+            }
+          })
+          text_index.forEach( (i) => {
+            if (typeof todo[i] != "string") {
+              todo[i] = ""
+            }
+          })          
+        }
+      })
 
       that.todoList = todoList
     });
   },
   methods: {
-    // example: [ [1,  true,  todowhat, howtodo], ... ]
-    // format:  [ [id, done?, text    , desc,], ... ]
+    // example: [ [1,   true, todowhat, howtodo, false ], ... ]
+    // format:  [ [id, done?, text    , desc,    heightlight?], ... ]
     // focuz on matter, regardless of time
     inputChange (value) {
-      var that = this
+      let that = this
       chrome.storage.sync.get(['todo'], function(result){
         // console.log(result.todo)
 
         try {
-          var todoList = JSON.parse(result.todo)  
+          let todoList = JSON.parse(result.todo)  
         } catch (error) {
           console.log(error)
-          var todoList = []
+          let todoList = []
         }
 
         if (typeof todoList != 'object') {
-          var todoList = []
+          let todoList = []
         }
 
         let textArr = value.split("//")
@@ -119,9 +140,15 @@ export default {
           textArr.push("")
         }
         
-        let newTodo = [todoList.length, false, textArr[0], textArr[1]]
+        let newTodo = [
+          todoList.length, 
+          false, 
+          textArr[0], 
+          textArr[1],
+          false
+          ] // default value
         todoList.push(newTodo)
-        var jsonTodoList = JSON.stringify(todoList)
+        let jsonTodoList = JSON.stringify(todoList)
         
         chrome.storage.sync.set({'todo': jsonTodoList}, () => {
           // 通知保存完成。
@@ -139,20 +166,19 @@ export default {
     },
     finished (index, e) {
       // console.log(e.target)
-      var that = this
+      let that = this
       chrome.storage.sync.get(['todo'], function(result){
         // console.log(result.todo)
 
         try {
-          var todoList = JSON.parse(result.todo)  
+          let todoList = JSON.parse(result.todo)  
         } catch (error) {
           console.log(error)
-          var todoList = []
+          let todoList = []
         }
-        
-        
+                
         todoList.splice(index, 1)
-        var jsonTodoList = JSON.stringify(todoList)
+        let jsonTodoList = JSON.stringify(todoList)
         
         chrome.storage.sync.set({'todo': jsonTodoList}, () => {
           // 通知保存完成。
@@ -172,8 +198,35 @@ export default {
       that.todoList = []
       chrome.storage.sync.set({'todo': ''}, () => {})
       that.dialogVisible = false
+    },
+    star (index, e) {
+      let that = this
+      console.log(index)
+      chrome.storage.sync.get(['todo'], function(result){
+        // console.log(result.todo)
+
+        try {
+          var todoList = JSON.parse(result.todo)  
+        } catch (error) {
+          console.log(error)
+          var todoList = []
+        }
+
+        todoList[index][4] = !todoList[index][4]
+        let jsonTodoList = JSON.stringify(todoList)
+        
+        chrome.storage.sync.set({'todo': jsonTodoList}, () => {
+          // 通知保存完成。
+          that.$notify({
+            title: todoList[index][4]?'已设置高亮':'已取消高亮',
+            type: 'success',
+            duration: 2000
+          })
+          that.todoList = todoList
+        })
+      })
     }
-  },
+  }
 }
 </script>
 
@@ -198,5 +251,9 @@ export default {
   font-size: 20px;
   line-height: 56px;
   height: 56px;
+}
+
+.redWord {
+  color: red;
 }
 </style>
